@@ -1,6 +1,6 @@
 
 {
-  "name": "ph-l0gs-backend",
+  "name": "numio-backend",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
