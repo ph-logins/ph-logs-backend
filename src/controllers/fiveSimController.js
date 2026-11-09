@@ -53,344 +53,176 @@ GET SERVICES
 =====================================================
 */
 
-// exports.getServices = async (req, res) => {
-
-//     console.time("getServices");
-
-//     try {
-
-//         const { country } = req.query;
-
-//         if (!country) {
-
-//             console.timeEnd("getServices");
-
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Country is required.",
-//             });
-
-//         }
-
-//         console.time("5SIM Request");
-
-//         const response = await fiveSim.get(
-//             `/guest/prices?country=${country}`
-//         );
-
-//         console.timeEnd("5SIM Request");
-
-//         const countryPrices =
-//             response.data[country] ||
-//             response.data;
-
-//         if (!countryPrices) {
-
-//             console.timeEnd("getServices");
-
-//             return res.status(404).json({
-//                 success: false,
-//                 message: "No services found.",
-//             });
-
-//         }
-
-//         console.log(
-//             "Total services from 5SIM:",
-//             Object.keys(countryPrices).length
-//         );
-
-//         console.time("Pricing Engine");
-
-//         const services = await Promise.all(
-
-//             Object.entries(countryPrices).map(
-
-//                 async ([serviceName, operators]) => {
-
-//                     try {
-
-//                         // Skip services with no operators
-//                         if (
-//                             !operators ||
-//                             Object.keys(operators).length === 0
-//                         ) {
-//                             return null;
-//                         }
-
-//                         // Calculate total stock first
-//                         const totalStock = Object.values(operators)
-//                             .reduce(
-//                                 (total, item) =>
-//                                     total +
-//                                     Number(
-//                                         item.count ??
-//                                         item.Count ??
-//                                         item.qty ??
-//                                         0
-//                                     ),
-//                                 0
-//                             );
-
-//                         // Skip if there is no stock
-//                         if (totalStock <= 0) {
-//                             return null;
-//                         }
-
-//                         const pricing =
-//                             await pricingEngine({
-
-//                                 country,
-
-//                                 service: serviceName,
-
-//                                 operators,
-
-//                             });
-
-//                         return {
-
-//                             name: serviceName,
-
-//                             operator: pricing.operator,
-
-//                             usdPrice: pricing.usdPrice,
-
-//                             ngnPrice: pricing.ngnPrice,
-
-//                             count: totalStock,
-
-//                         };
-
-//                     }
-
-//                     catch (err) {
-
-//                         console.log(
-//                             `${serviceName}: ${err.message}`
-//                         );
-
-//                         return null;
-
-//                     }
-
-//                 }
-
-//             )
-
-//         );
-
-//         console.timeEnd("Pricing Engine");
-
-//         const validServices = services
-//             .filter(Boolean)
-//             .sort((a, b) =>
-//                 a.name.localeCompare(b.name)
-//             );
-
-//         console.timeEnd("getServices");
-
-//         return res.json({
-
-//             success: true,
-
-//             total: validServices.length,
-
-//             services: validServices,
-
-//         });
-
-//     }
-
-//     catch (err) {
-
-//         console.timeEnd("getServices");
-
-//         console.error(
-//             err.response?.data || err.message
-//         );
-
-//         return res.status(500).json({
-
-//             success: false,
-
-//             message:
-//                 err.response?.data?.message ||
-//                 err.message ||
-//                 "Unable to fetch services.",
-
-//         });
-
-//     }
-
-// };
-
-
-/*
-=====================================================
-GET SERVICES
-=====================================================
-*/
-
 exports.getServices = async (req, res) => {
+
     console.time("getServices");
 
     try {
+
         const { country } = req.query;
 
         if (!country) {
+
+            console.timeEnd("getServices");
+
             return res.status(400).json({
                 success: false,
                 message: "Country is required.",
             });
+
         }
 
-        console.log("Selected country:", country);
-
-        // Fetch prices from 5SIM
         console.time("5SIM Request");
 
-        const response = await fiveSim.get("/guest/prices", {
-            params: { country },
-        });
+        const response = await fiveSim.get(
+            `/guest/prices?country=${country}`
+        );
 
         console.timeEnd("5SIM Request");
 
-        const data = response.data;
+        const countryPrices =
+            response.data[country] ||
+            response.data;
 
-        console.log("5SIM response type:", typeof data);
-        console.log(
-            "5SIM response country keys:",
-            Object.keys(data || {})
-        );
+        if (!countryPrices) {
 
-        // Extract country data
-        const countryPrices = data?.[country] ?? data;
-
-        if (
-            !countryPrices ||
-            typeof countryPrices !== "object" ||
-            Array.isArray(countryPrices)
-        ) {
             console.timeEnd("getServices");
 
             return res.status(404).json({
                 success: false,
-                message: `No services found for ${country}.`,
-                services: [],
+                message: "No services found.",
             });
+
         }
 
         console.log(
-            "Total services received:",
+            "Total services from 5SIM:",
             Object.keys(countryPrices).length
         );
 
         console.time("Pricing Engine");
 
         const services = await Promise.all(
+
             Object.entries(countryPrices).map(
+
                 async ([serviceName, operators]) => {
+
                     try {
+
+                        // Skip services with no operators
                         if (
                             !operators ||
-                            typeof operators !== "object" ||
-                            Array.isArray(operators)
+                            Object.keys(operators).length === 0
                         ) {
                             return null;
                         }
 
-                        // Calculate available stock
+                        // Calculate total stock first
                         const totalStock = Object.values(operators)
-                            .reduce((total, item) => {
-                                const count = Number(
-                                    item?.count ??
-                                    item?.Count ??
-                                    item?.qty ??
-                                    item?.Qty ??
-                                    0
-                                );
+                            .reduce(
+                                (total, item) =>
+                                    total +
+                                    Number(
+                                        item.count ??
+                                        item.Count ??
+                                        item.qty ??
+                                        0
+                                    ),
+                                0
+                            );
 
-                                return total + (
-                                    Number.isFinite(count) ? count : 0
-                                );
-                            }, 0);
-
-                        // Skip unavailable services
+                        // Skip if there is no stock
                         if (totalStock <= 0) {
                             return null;
                         }
 
-                        // Calculate NGN pricing
-                        const pricing = await pricingEngine({
-                            country,
-                            service: serviceName,
-                            operators,
-                        });
+                        const pricing =
+                            await pricingEngine({
 
-                        if (!pricing) {
-                            console.log(
-                                `Pricing unavailable: ${serviceName}`
-                            );
-                            return null;
-                        }
+                                country,
+
+                                service: serviceName,
+
+                                operators,
+
+                            });
 
                         return {
+
                             name: serviceName,
+
                             operator: pricing.operator,
+
                             usdPrice: pricing.usdPrice,
+
                             ngnPrice: pricing.ngnPrice,
+
                             count: totalStock,
+
                         };
 
-                    } catch (err) {
-                        console.error(
-                            `Pricing error for ${serviceName}:`,
-                            err.response?.data || err.message
+                    }
+
+                    catch (err) {
+
+                        console.log(
+                            `${serviceName}: ${err.message}`
                         );
 
                         return null;
+
                     }
+
                 }
+
             )
+
         );
 
         console.timeEnd("Pricing Engine");
 
         const validServices = services
             .filter(Boolean)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        console.log(
-            "Final services returned:",
-            validServices.length
-        );
+            .sort((a, b) =>
+                a.name.localeCompare(b.name)
+            );
 
         console.timeEnd("getServices");
 
         return res.json({
+
             success: true,
+
             total: validServices.length,
+
             services: validServices,
+
         });
 
-    } catch (err) {
+    }
+
+    catch (err) {
+
         console.timeEnd("getServices");
 
         console.error(
-            "GET SERVICES ERROR:",
             err.response?.data || err.message
         );
 
         return res.status(500).json({
+
             success: false,
+
             message:
                 err.response?.data?.message ||
                 err.message ||
                 "Unable to fetch services.",
-            services: [],
+
         });
+
     }
+
 };
 
 
